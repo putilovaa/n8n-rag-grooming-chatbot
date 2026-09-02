@@ -1,0 +1,621 @@
+{
+  "name": "Knowledge Base - Delete Documents",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "'YOUR_GOOGLE_DRIVE_FOLDER_ID' in parents and trashed = false",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5a90ab19-40c1-4059-9796-be5873b7363e",
+      "name": "Search files and folders",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_DOCUMENT_REGISTRY_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Document Registry"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Аркуш1"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        0
+      ],
+      "id": "80714c08-af0b-4956-9d0d-bb260c75f406",
+      "name": "Get row(s) in sheet",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "7035dfc3-a8dc-4f58-b7ec-b91dff9b3c56",
+      "name": "Wait"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_PINECONE_INDEX_HOST/vectors/delete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Pinecone-Api-Version",
+              "value": "2026-04"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"namespace\": \"Q&A\",\n  \"filter\": {\n    \"document_id\": {\n      \"$eq\": \"{{ $json.document_id }}\"\n    }\n  }\n}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        832,
+        0
+      ],
+      "id": "709572c9-dea6-4a24-947b-0297294d37a7",
+      "name": "Pinecone_delete chunks"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://YOUR_PINECONE_INDEX_HOST/vectors/fetch_by_metadata",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Pinecone-Api-Version",
+              "value": "2026-04"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"namespace\": \"Q&A\",\n  \"filter\": {\n    \"document_id\": {\n      \"$eq\": \"{{ $('Code').item.json.document_id }}\"\n    }\n  },\n  \"limit\": 1\n}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "7175ec21-ae6d-4df7-abb7-b1489698ef62",
+      "name": "Pinecone_check deleted chunks"
+    },
+    {
+      "parameters": {
+        "jsCode": "const registryRows = $input.all();\n\n// Файли, які зараз реально існують у Google Drive\nconst driveFiles = $('Search files and folders').all();\n\n// Збираємо всі Google Drive file IDs\nconst driveIds = new Set(\n  driveFiles\n    .map(item => String(item.json.id || ''))\n    .filter(Boolean)\n);\n\n// З Registry залишаємо тільки ті документи,\n// яких уже НЕМАЄ в Google Drive\nconst deletedDocuments = registryRows.filter(item => {\n  const documentId = String(item.json.document_id || '');\n  return documentId && !driveIds.has(documentId);\n});\n\nreturn deletedDocuments;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "3c1f5569-6f0d-4eb9-84bc-5a8d5eae0886",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2b05e816-7e7f-4961-8be4-0a9c9d9a87f1",
+              "leftValue": "={{ Object.keys($json.vectors ?? {}).length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1456,
+        0
+      ],
+      "id": "86ba5bca-330d-4b55-b291-f3951f7c663b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Pinecone deletion was not confirmed after 5 attempts."
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2240,
+        480
+      ],
+      "id": "676391ca-1df5-4347-af6e-37f60365ccaa",
+      "name": "Stop and Error1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1e91d73-4de9-4bc9-b894-5c71f8ed03a7",
+              "name": "retry_count",
+              "value": "={{ $runIndex + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1664,
+        144
+      ],
+      "id": "c9fb46d4-7172-4b39-9576-482c8d66d75c",
+      "name": "Increase retry counter1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e7223189-49b1-44fc-980c-c7a18ee4c81a",
+              "leftValue": "={{ $json.retry_count }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1888,
+        224
+      ],
+      "id": "e2519684-5456-4bbf-86b1-648900f8a54c",
+      "name": "Retry again?1"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2496,
+        448
+      ],
+      "id": "fa35c958-d06a-4e27-91f9-1f1a5f2f772f",
+      "name": "Wait 20 sec"
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "=❌RAG ALERT: Pinecone chunks were not deleted: {{ $('Code').item.json.document_name }}",
+        "emailType": "text",
+        "message": "=Pinecone deletion failed.\n\nDocument: {{ $('Code').item.json.document_name }}\nDocument ID: {{ $('Code').item.json.document_id }}\n\nChunks for this document are still present in Pinecone after all retry attempts.\n\nPlease check the Delete workflow in n8n and Pinecone.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2048,
+        368
+      ],
+      "id": "94d8d009-65bd-422e-84a3-103f1786c2c6",
+      "name": "Send a message2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_DOCUMENT_REGISTRY_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Document Registry"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Аркуш1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "document_id": "={{ $('Code').item.json.document_id }}",
+            "status": "deleted",
+            "last_synced_at": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "document_id"
+          ],
+          "schema": [
+            {
+              "id": "document_id",
+              "displayName": "document_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "document_name",
+              "displayName": "document_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "namespace",
+              "displayName": "namespace",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_synced_at",
+              "displayName": "last_synced_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "file_modified_time",
+              "displayName": "file_modified_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "chunks_count",
+              "displayName": "chunks_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "active_version_id",
+              "displayName": "active_version_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1664,
+        -96
+      ],
+      "id": "25cae60a-c48b-431b-9bc8-0de198d0a12d",
+      "name": "Update row in sheet"
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "✅ Document removed from AI knowledge base",
+        "message": "=Hello,  The document has been successfully removed from the AI knowledge base.  Document: {{ $('Code').item.json.document_name }} Document ID: {{ $('Code').item.json.document_id }}  All related chunks have been removed from Pinecone.  Status: Deleted  No further action is required.  AI Knowledge Base Automation",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1872,
+        -96
+      ],
+      "id": "8baf5366-b2db-4ece-abdd-bfd77aadc34a",
+      "name": "Send a message"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        0
+      ],
+      "id": "7ca4d250-66e6-4c2e-b847-21996917caec",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Search files and folders": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Pinecone_check deleted chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone_delete chunks": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Pinecone_delete chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone_check deleted chunks": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increase retry counter1": {
+      "main": [
+        [
+          {
+            "node": "Retry again?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry again?1": {
+      "main": [
+        [
+          {
+            "node": "Wait 20 sec",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message2": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Increase retry counter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20 sec": {
+      "main": [
+        [
+          {
+            "node": "Pinecone_check deleted chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Search files and folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": [],
+  "tags": []
+}

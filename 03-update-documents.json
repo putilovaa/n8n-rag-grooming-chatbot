@@ -1,0 +1,1184 @@
+{
+  "name": "Knowledge Base - Update Documents",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_DRIVE_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Knowledge Base Folder"
+        },
+        "event": "fileUpdated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        -288
+      ],
+      "id": "c386f7d8-1eee-405b-bc13-d3ed9a11ea60",
+      "name": "Google Drive Trigger"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "YOUR_PINECONE_INDEX_NAME",
+          "mode": "list",
+          "cachedResultName": "YOUR_PINECONE_INDEX_NAME"
+        },
+        "options": {
+          "pineconeNamespace": "Q&A"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        416,
+        -288
+      ],
+      "id": "e63cb8dd-1a9f-4a5f-8395-fdbcb0df55c4",
+      "name": "Pinecone Vector Store"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        384,
+        -80
+      ],
+      "id": "a467487f-d062-4eb6-a3ee-6aef5aa90d3a",
+      "name": "Embeddings OpenAI"
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "document_id",
+                "value": "={{ $('Initialize Metadata').item.json.document_id }}"
+              },
+              {
+                "name": "document_name",
+                "value": "={{ $('Initialize Metadata').item.json.document_name }}"
+              },
+              {
+                "name": "source",
+                "value": "={{ $('Initialize Metadata').item.json.source }}"
+              },
+              {
+                "name": "version_id",
+                "value": "={{ $('Google Drive Trigger').item.json.version.toString() }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        -80
+      ],
+      "id": "ed74c31c-152c-402d-9786-28fd3df0ad5e",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1952,
+        -560
+      ],
+      "id": "75a3131c-b580-4e44-bb9e-0731af162dc0",
+      "name": "Wait before verification"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a81bf306-ff9f-4038-acd6-05e73878dbf4",
+              "leftValue": "={{ Object.keys($json.vectors ?? {}).length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2400,
+        -560
+      ],
+      "id": "3fb610ee-f27f-43b9-a1b5-69b41e8a8bd1",
+      "name": "If old chunks deleted?"
+    },
+    {
+      "parameters": {
+        "content": "*змінюється кінець URL в залежності від завдання!\n**всі назви хедерс мають бути точно такими ж. В АПІ вставити ключ, решта без змін\n",
+        "height": 304,
+        "width": 176
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1680,
+        -784
+      ],
+      "typeVersion": 1,
+      "id": "7555b36f-827b-46ac-b0b6-7f7afef9f084",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Pinecone deletion was not confirmed after 5 attempts."
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        3168,
+        -256
+      ],
+      "id": "606571b1-5344-46f1-b3c3-a431a53321b9",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1e91d73-4de9-4bc9-b894-5c71f8ed03a7",
+              "name": "retry_count",
+              "value": "={{ $runIndex + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2608,
+        -496
+      ],
+      "id": "66c1384a-257b-483f-82b5-15c4f2ce1f2d",
+      "name": "Increase retry counter"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aabbcd8f-f477-4269-a242-b44678014703",
+              "name": "document_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "eb8cac4c-585f-4d28-b486-2cc13ade55f1",
+              "name": "document_name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "1ae04362-e489-4a0b-8269-86540f2e9ce4",
+              "name": "source",
+              "value": "google_drive",
+              "type": "string"
+            },
+            {
+              "id": "bb868335-21de-4a5e-a47b-291363c58cbd",
+              "name": "version",
+              "value": "={{ $json.version }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -448,
+        -288
+      ],
+      "id": "1b173be2-b522-4c3c-aafc-a28b89ec9bc7",
+      "name": "Initialize Metadata"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_PINECONE_INDEX_HOST/vectors/delete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Pinecone-Api-Version",
+              "value": "2026-04"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"namespace\": \"Q&A\",\n  \"filter\": {\n    \"document_id\": {\n      \"$eq\": \"{{ $('Get row(s) in sheet').item.json.document_id }}\"\n    },\n    \"version_id\": {\n      \"$eq\": \"{{ $('Get row(s) in sheet').item.json.active_version_id.toString() }}\"\n    }\n  },\n  \"limit\": 1\n}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1728,
+        -560
+      ],
+      "id": "a59ba023-ef84-4150-a68d-5b6c48200f9d",
+      "name": "Pinecone_delete existing chunks"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://YOUR_PINECONE_INDEX_HOST/vectors/fetch_by_metadata",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Pinecone-Api-Version",
+              "value": "2026-04"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"namespace\": \"Q&A\",\n  \"filter\": {\n    \"document_id\": {\n      \"$eq\": \"{{ $('Get row(s) in sheet').item.json.document_id }}\"\n    },\n    \"version_id\": {\n      \"$eq\": \"{{ $('Get row(s) in sheet').item.json.active_version_id.toString() }}\"\n    }\n  },\n  \"limit\": 1\n}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2192,
+        -560
+      ],
+      "id": "b9d8ee92-fbfe-4868-875c-605536512eda",
+      "name": "Pinecone_check old chunks"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e7223189-49b1-44fc-980c-c7a18ee4c81a",
+              "leftValue": "={{ $json.retry_count }}",
+              "rightValue": 8,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2832,
+        -448
+      ],
+      "id": "a4338e01-4319-4252-b3d4-87fe0cd24434",
+      "name": "Retry again?"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Initialize Metadata').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        208,
+        -288
+      ],
+      "id": "f4a87354-bfb2-4629-a1bb-90011409079b",
+      "name": "Download updated file"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_DOCUMENT_REGISTRY_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Document Registry"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Аркуш1"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "document_id",
+              "lookupValue": "={{ $json.document_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -256,
+        -288
+      ],
+      "id": "6cccff19-1b01-41b2-83e5-b23b3ac962f6",
+      "name": "Get row(s) in sheet"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "70410a61-3788-402e-92d0-ca3b579fdfbc",
+              "leftValue": "={{ $json.active_version_id }}",
+              "rightValue": "={{ $('Initialize Metadata').item.json.version }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -48,
+        -288
+      ],
+      "id": "68c7b801-c307-4cca-b857-c48b95329f10",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        112,
+        -496
+      ],
+      "id": "2f63b9ed-8de8-451a-ae17-db9873672512",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "content": "Можна додати в майбутньому:\n-soft delete, видалення через якийсь час\n-retry для pinecone insert\n-окремий лист або таблиця з логами\n- черга, якщо закидується одразу багато документів\n ",
+        "height": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -144,
+        -864
+      ],
+      "typeVersion": 1,
+      "id": "b51e010d-bc43-4e56-ab6d-25bdf4d73de7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://YOUR_PINECONE_INDEX_HOST/vectors/fetch_by_metadata",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Pinecone-Api-Version",
+              "value": "2026-04"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"namespace\": \"Q&A\",\n  \"filter\": {\n    \"document_id\": {\n      \"$eq\": \"{{ $('Initialize Metadata').item.json.document_id }}\"\n    },\n    \"version_id\": {\n      \"$eq\": \"{{ $('Google Drive Trigger').item.json.version.toString() }}\"\n    }\n  },\n  \"limit\": 1\n}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1216,
+        -288
+      ],
+      "id": "bf5870ef-9d4c-467a-a7d6-55ca4bf376da",
+      "name": "Pinecone_check new version",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        -288
+      ],
+      "id": "34197e20-f69a-4983-9740-9c01ebf4b66e",
+      "name": "Wait before load new version"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f5f35166-dde9-49e9-b466-2ae74321aafc",
+              "leftValue": "={{ Object.keys($json.vectors ?? {}).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1456,
+        -288
+      ],
+      "id": "55e68256-365f-442c-bb85-bc094858cc5e",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "content": "В settings увімкнено повзунок щоб передавати запит тільки 1 раз.",
+        "height": 256,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1200,
+        -480
+      ],
+      "typeVersion": 1,
+      "id": "1b9ff41d-5199-4e84-bbf8-2d22fc918704",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_DOCUMENT_REGISTRY_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Document Registry"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Аркуш1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "active_version_id": "={{ $('Initialize Metadata').item.json.version }}",
+            "file_modified_time": "={{ $('Google Drive Trigger').item.json.modifiedTime }}",
+            "last_synced_at": "={{ $now }}",
+            "document_id": "={{ $('Initialize Metadata').item.json.document_id }}"
+          },
+          "matchingColumns": [
+            "document_id"
+          ],
+          "schema": [
+            {
+              "id": "document_id",
+              "displayName": "document_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "document_name",
+              "displayName": "document_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "namespace",
+              "displayName": "namespace",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_synced_at",
+              "displayName": "last_synced_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "file_modified_time",
+              "displayName": "file_modified_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chunks_count",
+              "displayName": "chunks_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "active_version_id",
+              "displayName": "active_version_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2656,
+        -736
+      ],
+      "id": "87f8252f-88cf-42b3-87d9-1bbb918908a0",
+      "name": "Update row in sheet"
+    },
+    {
+      "parameters": {
+        "content": "допилити chanks count"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        240,
+        -848
+      ],
+      "typeVersion": 1,
+      "id": "e4fe8487-6891-473e-9698-b2e1a8335059",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Pinecone deletion was not confirmed after 5 attempts."
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2304,
+        208
+      ],
+      "id": "5fa7f1e5-5891-4697-b353-d22d4509704d",
+      "name": "Stop and Error1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1e91d73-4de9-4bc9-b894-5c71f8ed03a7",
+              "name": "retry_count",
+              "value": "={{ $runIndex + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1728,
+        -96
+      ],
+      "id": "ee1df434-9d75-41c7-9af6-be7481cc62ed",
+      "name": "Increase retry counter1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e7223189-49b1-44fc-980c-c7a18ee4c81a",
+              "leftValue": "={{ $json.retry_count }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1952,
+        -48
+      ],
+      "id": "55d1b336-6b1e-487e-a623-fe212bc7f627",
+      "name": "Retry again?1"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2560,
+        176
+      ],
+      "id": "6333c1de-9da9-47df-a503-2ac3ae3c4f66",
+      "name": "Wait 20 sec"
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "=✅ Knowledge Base Updated: {{ $('Google Drive Trigger').item.json.name }}",
+        "emailType": "text",
+        "message": "=Hello,\n\nThe document has been successfully updated in the AI knowledge base.\n\nDocument: {{ $('Google Drive Trigger').item.json.name }}\nNew version: {{ $('Google Drive Trigger').item.json.version }}\nStatus: Successfully updated\n\nThe previous version has been removed and the new version is now active.\n\nNo further action is required.\n\nAI Knowledge Base Automation",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2864,
+        -736
+      ],
+      "id": "d5b309a8-6080-4ecd-848b-89343f24b4eb",
+      "name": "Send a message"
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "=⚠️ Knowledge Base Update Warning — old chunks were not deleted",
+        "emailType": "text",
+        "message": "=Hello,\n\nThe new version of the document was uploaded successfully, but the old version could not be deleted from Pinecone.\n\nDocument: {{ $('Initialize Metadata').item.json.document_name }}\nDocument ID: {{ $('Initialize Metadata').item.json.document_id }}\nNew version: {{ $('Google Drive Trigger').item.json.version }}\nOld version: {{ $('Get row(s) in sheet').item.json.active_version_id }}\n\nAction required:\nPlease check the Pinecone cleanup process for this document.\n\nAI Knowledge Base Automation",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3008,
+        -336
+      ],
+      "id": "bbf9d6ad-2f85-41b9-86cd-716fa8e517ee",
+      "name": "Send a message1"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3456,
+        -288
+      ],
+      "id": "2c92ed7b-1510-4df3-ad60-2edaecd951d0",
+      "name": "Wait 20s"
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "=❌ Knowledge Base Update Failed: {{ $('Initialize Metadata').item.json.document_name }}",
+        "emailType": "text",
+        "message": "=Hello,\n\nThe document could not be successfully updated in the AI knowledge base.\n\nDocument: {{ $('Initialize Metadata').item.json.document_name }}\nDocument ID: {{ $('Initialize Metadata').item.json.document_id }}\nAttempted version: {{ $('Google Drive Trigger').item.json.version }}\n\nThe new version could not be confirmed in Pinecone.\n\nThe previous active version has NOT been deleted, so the existing knowledge base data remains available.\n\nAction required:\nPlease check the Pinecone upload/update workflow for this document.\n\nAI Knowledge Base Automation",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2112,
+        96
+      ],
+      "id": "7039afbf-9188-49b3-a67e-089131c99a8f",
+      "name": "Send a message2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const grouped = new Map();\n\nfor (const item of $input.all()) {\n  const metadata = item.json.metadata ?? item.json;\n\n  const documentId =\n    metadata.document_id ??\n    metadata.documentId;\n\n  if (!documentId) {\n    continue;\n  }\n\n  if (!grouped.has(documentId)) {\n    grouped.set(documentId, {\n      json: {\n        document_id: documentId,\n        document_name:\n          metadata.document_name ??\n          metadata.documentName ??\n          'Unknown document',\n        version: metadata.version,\n        source: metadata.source ?? 'google_drive',\n        namespace: 'Q&A',\n        status: 'active',\n        last_synced_at: new Date().toISOString(),\n        chunks_count: 0,\n      },\n    });\n  }\n\n  grouped.get(documentId).json.chunks_count += 1;\n}\n\nreturn [...grouped.values()];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -288
+      ],
+      "id": "6c915968-f667-478c-b8cc-fbbd538bcbba",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait before verification": {
+      "main": [
+        [
+          {
+            "node": "Pinecone_check old chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If old chanks deleted?": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Increase retry counter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increase retry counter": {
+      "main": [
+        [
+          {
+            "node": "Retry again?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Metadata": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone_delete exiting chunks": {
+      "main": [
+        [
+          {
+            "node": "Wait before verification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone_check old chunks": {
+      "main": [
+        [
+          {
+            "node": "If old chunks deleted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry again?": {
+      "main": [
+        [
+          {
+            "node": "Wait 20s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download updated file": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download updated file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone_check new version": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait before load new version": {
+      "main": [
+        [
+          {
+            "node": "Pinecone_check new version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Pinecone_delete existing chunks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Increase retry counter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increase retry counter1": {
+      "main": [
+        [
+          {
+            "node": "Retry again?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry again?1": {
+      "main": [
+        [
+          {
+            "node": "Wait 20 sec",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20 sec": {
+      "main": [
+        [
+          {
+            "node": "Pinecone_check new version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20s": {
+      "main": [
+        [
+          {
+            "node": "Pinecone_check old chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message2": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Wait before load new version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "nodeGroups": [],
+  "tags": []
+}
