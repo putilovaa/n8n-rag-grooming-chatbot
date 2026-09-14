@@ -2,6 +2,12 @@
 
 An AI-powered customer support chatbot built in n8n. It answers questions from a Pinecone knowledge base, captures leads in Google Sheets, and automatically synchronizes business documents stored in Google Drive.
 
+## Watch the demo
+
+See the chatbot answer a customer question, update its knowledge base after a Google Drive document changes, and answer the same question with the new information.
+
+▶️ [Watch the video demonstration](https://github.com/putilovaa/n8n-rag-grooming-chatbot/releases/tag/v1.0.0)
+
 > Portfolio project: all credentials, account identifiers, email addresses, and service URLs have been removed or replaced with placeholders.
 
 ## What this project solves
