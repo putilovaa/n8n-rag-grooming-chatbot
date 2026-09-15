@@ -8,6 +8,20 @@ See the chatbot answer a customer question, update its knowledge base after a Go
 
 ▶️ [Watch the video demonstration](https://github.com/putilovaa/n8n-rag-grooming-chatbot/releases/tag/v1.0.0)
 
+## Project preview
+
+### RAG chatbot workflow
+
+![Main RAG chatbot workflow](screenshots/rag-workflow.png)
+
+### Customer-facing chatbot
+
+![Grooming chatbot answering a customer question](screenshots/chatbot-result.png)
+
+### Automated knowledge base update
+
+![Successful document update workflow execution](screenshots/update-execution.png)
+
 > Portfolio project: all credentials, account identifiers, email addresses, and service URLs have been removed or replaced with placeholders.
 
 ## What this project solves
